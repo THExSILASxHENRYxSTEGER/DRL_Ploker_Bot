@@ -59,6 +59,7 @@ class Hand: # class of a hand that a player can have is supposed to show if one 
         return self.card1, self.card2
 
 class Flop:
+    
     def __init__(self, card1, card2, card3):
         self.card1, self.card2, self.card3 = sorted([card1, card2, card3])
         self.flop_id = [*card1.get_card_id(), *card2.get_card_id(), *card3.get_card_id()]
@@ -70,6 +71,7 @@ class Flop:
         return self.card1, self.card2, self.card3
 
 class Combinations:
+    
     def __init__(self, hand, tbl_crds): # tbl_crds are the cards on the table every player shares
         self.hand = hand
         self.tbl_crds = tbl_crds
