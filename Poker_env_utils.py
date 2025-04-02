@@ -1,6 +1,7 @@
 import numpy as np
 from itertools import product
 from copy import deepcopy
+from enum import Enum, auto
 
 class Card: # class of a normal card
     
@@ -21,7 +22,6 @@ class Card: # class of a normal card
             return self.suit_id < other.suit_id
         else:
             return self.num_id < other.num_id
-
 
 class Deck: # this class gives out a deck of 52 cards for texas hold em
 
@@ -55,15 +55,77 @@ class Hand: # class of a hand that a player can have is supposed to show if one 
     def __str__(self):
         return f"{str(self.card1)} {str(self.card2)}"
 
-# !!!!!!!!!! order cards always from lowest to highest or vice versa so model has not to learn order of cards dont matter 
+    def get_cards(self):
+        return self.card1, self.card2
 
 class Flop:
     def __init__(self, card1, card2, card3):
         self.card1, self.card2, self.card3 = sorted([card1, card2, card3])
-        self.hand_id = [*card1.get_card_id(), *card2.get_card_id(), *card3.get_card_id()]
+        self.flop_id = [*card1.get_card_id(), *card2.get_card_id(), *card3.get_card_id()]
 
     def __str__(self):
         return f"{str(self.card1)} {str(self.card2)} {str(self.card3)}"
+
+    def get_cards(self):
+        return self.card1, self.card2, self.card3
+
+class Combinations:
+    def __init__(self, hand, tbl_crds): # tbl_crds are the cards on the table every player shares
+        self.hand = hand
+        self.tbl_crds = tbl_crds
+        combntn_names = [
+            "royal_flush",
+            "straight_flush",
+            "four_of_a_kind",
+            "full_house",
+            "flush",
+            "straight",
+            "three_of_a_kind",
+            "two_pairs",
+            "pair",
+            "high_card",
+            ]
+        self.cmbntns = self.get_cmbnts(combntn_names)
+    
+    def get_cmbnts(self, combntn_names):
+        cmbntns = dict()
+        for name in combntn_names:
+            funcl = getattr(self, name, None)
+            comb = funcl()
+            cmbntns[name] = comb
+
+    def royal_flush(self): # each of the functions returns a list of the individual players hands categories sorted descendingly by strength for example in pairs all individual pairs the player has are accumulated
+        pass
+
+    def straight_flush(self):
+        pass
+
+    def four_of_a_kind(self):
+        pass
+    
+    def full_house(self):
+        pass
+    
+    def flush(self):
+        pass
+    
+    def straight(self):
+        pass
+    
+    def three_of_a_kind(self):
+        pass
+
+    def two_pairs(self):
+        pass
+
+    def pair(self):
+        pass
+
+    def high_card(self):
+        return reversed([*self.hand.get_cards()])
+
+    def __lt__(self, other): # go down the self.cmbntns lists and see which player has highest individual combiation
+        pass # !!!! consider split pot
 
 class Round:
 
@@ -75,9 +137,10 @@ class Round:
         self.active_players = players[start_ind:]+players[:start_ind]
         self.folder_indcs = list()
         self.history = { # collect over betting rounds
+            "ap_indcs" : list(range(len(self.active_players))), # initial indeces of active players removed after flop
             "blind" : blind,
             "player_hands" : None, # hands of all players in betting order
-            "crds_rnd" : [], # all cards in order of the round
+            "tbl_crds" : [], # all table cards in order of the round
             "sub_rnds" : {
                 "preflop" : [], # preflop history of betting order
                 "flop" : [],  # flop history
@@ -112,6 +175,7 @@ class Round:
             self.pot += add_pot
         for i in reversed(self.folder_indcs):
             self.active_players.pop(i)   
+            self.history["ap_indcs"].pop(i)
             if len(cardsets) > 1:
                 cardsets.pop(i)
         if len(self.active_players) == 1:
@@ -119,22 +183,6 @@ class Round:
             round_over = True
         self.folder_indcs.clear()
         return stake, round_over
-
-    def preflop(self, deck):
-        n_pl = len(self.active_players)
-        hands = [Hand(c1,c2) for (c1,c2) in zip(Round.draw_hand(deck,n_pl), Round.draw_hand(deck,n_pl))]
-        self.history["player_hands"] = deepcopy(hands)
-        self.pot = 3 * self.blind
-        self.active_players[-1].take_big_blind(self.blind)
-        self.active_players[-2].take_small_blind(self.blind)
-        stake = 2 * self.blind           # the current minimum stake all players need to pay in to participate
-        round_func = "bet_preflop"
-        #first betting round
-        stake, over = self.betting_round(hands, stake, round_func, self.history["pfl"], first_bid=True)
-        #second betting round
-        if not over:
-            _, over = self.betting_round(hands, stake, round_func, self.history["pfl"], first_bid=False)
-        return over
 
     def subround(self, deck, sub_rnd):
         stake = 0
@@ -152,7 +200,7 @@ class Round:
                 cardsets = [Flop(deck.draw(), deck.draw(), deck.draw())]    
             else:
                 cardsets = [deck.draw()]
-            self.history["crds_rnd"] += cardsets
+            self.history["tbl_crds"] += cardsets
         #first betting round along the table
         stake, over = self.betting_round(cardsets, stake, sub_rnd, self.history["sub_rnds"][sub_rnd],first_bid=True)
         #second betting round along the table
@@ -164,8 +212,11 @@ class Round:
         
 # !!!!!!! program showdown and also save winner id in history, but beware the winner can also be decided when everyone
 # else folds so also needed to manipulate betting rounds !!!!!!!!! 
-    def showdown(self): 
-        pass
+    def showdown(self):
+        player_cmbnts = list()
+        for idx in self.history["ap_indcs"]: 
+            cmbnts = Combinations(self.history["player_hands"][idx], self.history["tbl_crds"])
+            player_cmbnts.append(cmbnts)
 
 class Tournament:
     
