@@ -2,6 +2,7 @@ import numpy as np
 from itertools import product
 from copy import deepcopy
 from enum import Enum, auto
+from itertools import combinations
 
 class Card: # class of a normal card
     
@@ -22,6 +23,9 @@ class Card: # class of a normal card
             return self.suit_id < other.suit_id
         else:
             return self.num_id < other.num_id
+    
+    def __eq__(self, other):
+        return self.num_id == other.num_id
 
 class Deck: # this class gives out a deck of 52 cards for texas hold em
 
@@ -73,8 +77,7 @@ class Flop:
 class Combinations:
     
     def __init__(self, hand, tbl_crds): # tbl_crds are the cards on the table every player shares
-        self.hand = hand
-        self.tbl_crds = tbl_crds
+        tbl_crds = [*tbl_crds[0].get_cards(), tbl_crds[1], tbl_crds[2]]
         combntn_names = [
             "royal_flush",
             "straight_flush",
@@ -87,6 +90,10 @@ class Combinations:
             "pair",
             "high_card",
             ]
+        com_possibilities = 3
+        hand_cmbntns = list(combinations(tbl_crds, com_possibilities))
+        self.hand_cmbntns = [sorted([*hand.get_cards(), *hand_cmbntn]) for hand_cmbntn in hand_cmbntns]
+        self.hand_cmbntns.append(sorted(tbl_crds))
         self.cmbntns = self.get_cmbnts(combntn_names)
     
     def get_cmbnts(self, combntn_names):
@@ -95,12 +102,37 @@ class Combinations:
             funcl = getattr(self, name, None)
             comb = funcl()
             cmbntns[name] = comb
+    
+    @staticmethod
+    def is_straight(hand_cmbntn):
+        for i in range(len(hand_cmbntn)-1):
+            if hand_cmbntn[i].num_id+1 != hand_cmbntn[i+1].num_id:
+                return False
+        return True
+
+    @staticmethod
+    def is_flush(hand_cmbntn):
+        for i in range(len(hand_cmbntn)-1):
+            if hand_cmbntn[i].suit_id != hand_cmbntn[i+1].suit_id:
+                return False
+        return True
 
     def royal_flush(self): # each of the functions returns a list of the individual players hands categories sorted descendingly by strength for example in pairs all individual pairs the player has are accumulated
-        pass
+        rfs = list()
+        for hand_cmbntn in self.hand_cmbntns:
+            is_royal_flush = Combinations.is_straight(hand_cmbntn) and Combinations.is_flush(hand_cmbntn) and (hand_cmbntn[0].num == "10") and (hand_cmbntn[-1].num == "A")
+            if is_royal_flush:
+                rfs.append(hand_cmbntn)
+                break # only one royal flush is possible that player wins directly
+        return rfs
 
     def straight_flush(self):
-        pass
+        sfs = list()
+        for hand_cmbntn in self.hand_cmbntns:
+            is_straight_flush = Combinations.is_straight(hand_cmbntn) and Combinations.is_flush(hand_cmbntn)
+            if is_straight_flush:
+                sfs.append(hand_cmbntn)
+        return sfs
 
     def four_of_a_kind(self):
         pass
@@ -161,7 +193,7 @@ class Round:
         for i, player in enumerate(self.active_players):
             if i+1 == len(self.active_players) and i == len(self.folder_indcs): # in case all players fold the last player wins all by default
                 self.active_players[i].add_cash(self.pot)
-                return _, True # True marks the game is over
+                return None, True # True marks the game is over
             player_bet = getattr(player, method_name, None)
             if len(cardsets) > 1: 
                 relevant_cds = cardsets[i]
